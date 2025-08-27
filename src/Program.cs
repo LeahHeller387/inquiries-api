@@ -5,6 +5,7 @@ using Inquiries.Api.Middleware;
 using Inquiries.Api.Infrastructure.Ef;
 using Inquiries.Api.Infrastructure.Repositories.Ef;
 using Inquiries.Api.Infrastructure.Repositories.Interfaces;
+using Inquiries.Api.Infrastructure.Setup;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -72,6 +73,8 @@ using (var scope = app.Services.CreateScope())
 
     var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+    await DemoDataSeeder.SeedAsync(db);
+
     await SqlServerObjects.EnsureStoredProcAsync(cfg, env);
 
 }

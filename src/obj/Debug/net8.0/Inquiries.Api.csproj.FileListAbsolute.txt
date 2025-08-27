@@ -238,3 +238,4 @@ C:\Users\User\Documents\hanhalat-batay-mishpat\Inquiries\src\obj\Debug\net8.0\re
 C:\Users\User\Documents\hanhalat-batay-mishpat\Inquiries\src\obj\Debug\net8.0\Inquiries.Api.pdb
 C:\Users\User\Documents\hanhalat-batay-mishpat\Inquiries\src\obj\Debug\net8.0\Inquiries.Api.genruntimeconfig.cache
 C:\Users\User\Documents\hanhalat-batay-mishpat\Inquiries\src\obj\Debug\net8.0\ref\Inquiries.Api.dll
+C:\Users\User\Documents\hanhalat-batay-mishpat\Inquiries\src\obj\Debug\net8.0\Inquiries.Api.sourcelink.json
