@@ -1,219 +1,107 @@
-# Inquiries – Web API (.NET) + Angular UI
+# Inquiries API (.NET) — README
 
-מטלת בית: מערכת ניהול **פניות** עם Web API ב‑.NET, פעולות CRUD, Stored Procedure לדוח חודשי, בדיקות יחידה, ו‑UI באנגולר 19 עם Angular Material.
-
----
-
-## תוכן עניינים
-- [תקציר](#תקציר)
-- [ארכיטקטורה בקצרה](#ארכיטקטורה-בקצרה)
-- [דרישות מוקדמות](#דרישות-מוקדמות)
-- [התקנה והרצה — Backend (.NET)](#התקנה-והרצה--backend-net)
-- [התקנה והרצה — Frontend (Angular 19)](#התקנה-והרצה--frontend-angular-19)
-- [קונפיגורציה](#קונפיגורציה)
-- [Endpoints עיקריים](#endpoints-עיקריים)
-- [Stored Procedure — דוח פניות חודשי](#stored-procedure--דוח-פניות-חודשי)
-- [שיפורי ביצועים מוצעים](#שיפורי-ביצועים-מוצעים)
-- [בדיקות יחידה](#בדיקות-יחידה)
-- [אבטחה](#אבטחה)
-- [טיפול בשגיאות ולוגינג](#טיפול-בשגיאות-ולוגינג)
-- [CORS](#cors)
-- [מבנה הפרויקט](#מבנה-הפרויקט)
-- [תקלות נפוצות (FAQ)](#תקלות-נפוצות-faq)
+מסמך זה מתאר את פרויקט ה־**Inquiries API** שנבנה ב־.NET, כולל תיאור התכולה, שיטת הבנייה והרכיבים, יתרונות/חסרונות, אבטחה, טיפול בשגיאות, מנגנוני קישור (DB), CORS, והוראות התקנה/הרצה.  
+> **שימו לב:** מסמך זה מכסה את צד ה־API בלבד (ללא Frontend).
 
 ---
 
-## תקציר
-- **Backend**: ASP.NET Core (TargetFramework: `net8.0`) עם **EF Core** ו‑SQL Server **LocalDB**.  
-  כולל CRUD לפניות, ניהול מחלקות, ו‑endpoint לדוח חודשי על בסיס Stored Procedure.
-- **DB**: יצירת המסד וה‑migrations מתבצעת אוטומטית בהרצה (`Database.MigrateAsync`).  
-  נזרעים **מחלקות** בסיסיות, ואפשר לזרוע **נתוני דמו** לפניות הכנסה מרובות חודשים (אופציונלי).
-- **Frontend**: Angular 19 + Angular Material, טופס יצירת פנייה + מסך דוח חודשי.
-- **בדיקות**: xUnit + Moq + FluentAssertions עבור שכבת השירותים והבקרי‑דוחות.
-- **תיעוד**: Swagger UI זמין בזמן פיתוח.
+## 🎯 תכולת הפרויקט
+- **CRUD לפניות** (`Inquiries`) עם השדות:
+  - `Name`, `Phone`, `Email`, `DepartmentIds[]`, `Description`
+- **מחלקות (Departments)**: טעינת 3 מחלקות ברירת־מחדל אם הטבלה ריקה.
+- **דוח חודשי**: נקודת קצה שמחזירה את תוצאת ה־Stored Procedure `dbo.GetMonthlyInquiryReport` עם השוואה לחודש קודם ולאותו חודש בשנה שעברה.
+- **בדיקות יחידה בסיסיות** לפרקי לוגיקה (Services).
+- **Swagger/OpenAPI** לתיעוד ונסיון אינטראקטיבי.
+- **CORS** פתוח ל־`http://localhost:4200` ו־`http://localhost:5173` (ניתן לשינוי).
 
 ---
 
-## ארכיטקטורה בקצרה
+## 🧱 ארכיטקטורה ורכיבים
+- **ASP.NET Core 8** — פרויקט Web API (`net8.0`).
+- **Entity Framework Core 9** — ORM לניהול סכימה ו־Migrations, `DbContext` ו־Repositories.
+- **SQL Server LocalDB** — בסיס נתונים מקומי קליל הבנוי אוטומטית בהרצה.
+- **Stored Procedure** ב־T‑SQL: נמצא בקובץ `Infrastructure/Scripts/GetMonthlyInquiryReport.sql` ומותקן ב־startup.
+- **Dapper + Microsoft.Data.SqlClient** — קריאה יעילה ל־Stored Procedure לדוח.
+- **Middleware** לריכוז טיפול בשגיאות והחזרת תשובת בעיה תקנית (Problem Details).
+
+**מבנה תיקיות רלוונטי (מקוצר):**
 ```
-Inquiries (Solution Root)
-├─ src/                   # קוד ה-API
-│  ├─ Controllers/        # Inquiries, Reports, Departments
-│  ├─ Application/        # DTOs + Services Interfaces/Impl
-│  ├─ Domain/             # ישויות דומיין
-│  ├─ Infrastructure/
-│  │  ├─ Ef/              # DbContext, מיפויים, Repositories EF
-│  │  ├─ Repositories/    # EF/Interfaces
-│  │  ├─ Scripts/         # GetMonthlyInquiryReport.sql
-│  │  └─ Setup/           # DatabaseBootstrapper (SP + Seeding)
-│  └─ Program.cs          # הרכבת היישום (ללא T-SQL קשיח)
-├─ tests/                 # בדיקות יחידה
-└─ Inquiries.sln
+src/
+  Controllers/
+    InquiriesController.cs
+    DepartmentsController.cs
+    ReportsController.cs
+  Application/
+    DTOs/ (Inquiries, Reports)
+    Interfaces/ (IInquiryService, IReportService, ...)
+    Services/ (InquiryService, ReportServiceDb, ...)
+  Infrastructure/
+    Ef/ (AppDbContext, ישויות EF)
+    Repositories/ (EfInquiryRepository, EfDepartmentRepository, ...)
+    Scripts/
+      GetMonthlyInquiryReport.sql   <-- ה־SP נשמר כאן
+    Setup/
+      DatabaseBootstrapper.cs       <-- מתקין SP ומזריע נתוני דמו (אופציונלי)
+  Middleware/
+    ExceptionHandlingMiddleware.cs
 ```
 
 ---
 
-## דרישות מוקדמות
-- **.NET SDK 8+**
-- **SQL Server LocalDB** (מגיע עם Visual Studio / אפשר התקנה נפרדת)
-- **Node.js 20+** ו‑**npm**
-- (אופציונלי) **Git**
+## ⚖️ החלטות טכניות — יתרונות/חסרונות
+**EF Core** (ל־CRUD ולמיגרציות):
+- ✔️ פרודוקטיביות, מעקב שינויים, Migrations, LINQ, ולידציה קלה.
+- ❌ overhead קל בביצועים מול קריאות ידניות.
+
+**Dapper/SP לדוחות:**
+- ✔️ מהיר ויעיל לסיכומים/אגרגציות; ניצול אינדקסים; לוגיקת חישוב בצד ה־DB.
+- ❌ דורש ניהול T‑SQL בנפרד ובקרת גרסאות ל־SP.
+
+**LocalDB**:
+- ✔️ אין דרישה להתקנה כבדה; “עולה” אוטומטית אצל המריץ.
+- ❌ מיועד לפיתוח; בפרודקשן יש לעבור ל־SQL Server מלא/ענני.
 
 ---
 
-## התקנה והרצה — Backend (.NET)
-
-1. שכפול והתקנת תלויות:
-   ```bash
-   git clone <repo-url> inquiries-api
-   cd inquiries-api
-   dotnet build
-   ```
-
-2. קובץ קונפיגורציה לפיתוח: `src/appsettings.Development.json` (דוגמה):
-   ```json
-   {
-     "Logging": {
-       "LogLevel": {
-         "Default": "Information",
-         "Microsoft.AspNetCore": "Warning"
-       }
-     },
-     "ConnectionStrings": {
-       "Default": "Server=(localdb)\\MSSQLLocalDB;Database=InquiriesDb;Trusted_Connection=True;TrustServerCertificate=True"
-     },
-     "Reporting": {
-       "Backend": "StoredProcedure"
-     },
-     "DemoData": {
-       "SeedOnStartup": true,
-       "SampleSize": 60
-     },
-     "AllowedHosts": "*"
-   }
-   ```
-
-3. הרצה (מיישם Migrations, יוצר SP, וזורע נתונים במידת הצורך):
-   ```bash
-   dotnet run --project .\src\Inquiries.Api.csproj
-   ```
-   כברירת מחדל ה‑API מאזין ב‑`http://localhost:5005` (ראו `launchSettings.json`).
-
-4. Swagger UI (פיתוח): `http://localhost:5005/swagger`
-
-> **הערה**: אם LocalDB כבוי — הפעילו:
-> ```powershell
-> sqllocaldb start MSSQLLocalDB
-> ```
+## 🔐 אבטחה (היי־לבל)
+- **HTTPS**: מוגדר `UseHttpsRedirection()`.
+- **ולידציה**: DTOs משתמשים ב־Data Annotations; Controllers מחזירים 400 בעת קלט שגוי.
+- **SQL Injection**: כל הקריאות ל־DB פרמטריות (EF Core/Dapper); ה־SP לא מרכיב SQL דינמי מטקסט.
+- **סודות**: מחרוזת החיבור ב־`appsettings.Development.json`/`User Secrets`; לפרודקשן — `Environment Variables`/Vault.
+- **CORS**: מאפשר מקורות ידועים בלבד (ניתן להקשיח).
 
 ---
 
-## התקנה והרצה — Frontend (Angular 19)
-
-1. התקנת תלויות והפעלה:
-   ```bash
-   cd inquiries-ui
-   npm i
-   npm start        # ng serve --proxy-config proxy.conf.json
-   ```
-
-2. `src/proxy.conf.json` (נדרש לפיתוח, מנתב `/api` ל‑API המקומי):
-   ```json
-   {
-     "/api": {
-       "target": "http://localhost:5005",
-       "secure": false,
-       "changeOrigin": false,
-       "logLevel": "debug"
-     }
-   }
-   ```
-
-3. `src/environments/environment.ts`:
-   ```ts
-   export const environment = {
-     production: false,
-     apiBaseUrl: '/api'
-   };
-   ```
-
-4. ב‑root providers (למשל `app.config.ts`):
-   ```ts
-   import { provideHttpClient, withInterceptorsFromDi, withFetch } from '@angular/common/http';
-   // ...
-   provideHttpClient(withInterceptorsFromDi(), withFetch());
-   ```
-
-האפליקציה תרוץ ב‑`http://localhost:4200/`.
+## 🧰 טיפול בשגיאות
+- **ExceptionHandlingMiddleware** מרכז חריגות ומחזיר `application/problem+json` עם `traceId` וסטטוס מתאים (400/404/500).
+- לוגים נכתבים דרך `ILogger` ו־`Logging` של ASP.NET Core.
 
 ---
 
-## קונפיגורציה
-- **ConnectionStrings:Default** — שרת/מסד היעד.
-- **Reporting:Backend** — כרגע `StoredProcedure` (ניתן להחליף למימוש Dapper/EF בעתיד).
-- **DemoData:SeedOnStartup** — הדלקת זריעת נתוני דמו (false בפרודקשן).
-- **DemoData:SampleSize** — כמות רשומות דמו (מפוזרות אחורה בזמן 12 חודשים).
+## 🔗 מנגנוני קישור (DB)
+- **Connection String** (ברירת מחדל):
+  ```json
+  "ConnectionStrings": {
+    "Default": "Server=(localdb)\\MSSQLLocalDB;Database=InquiriesDb;Trusted_Connection=True;TrustServerCertificate=True"
+  }
+  ```
+- **Migrations**: מורצות אוטומטית ב־startup (`db.Database.MigrateAsync()`).
+- **התקנת ה־SP**: בעת עליית היישום, קובץ `GetMonthlyInquiryReport.sql` נטען ומבוצע ב־`CREATE OR ALTER` כך שה־SP תמיד קיים/מעודכן.
+- **זריעת נתונים**:
+  - Departments נטענים כברירת־מחדל אם הטבלה ריקה.
+  - (אופציונלי) זריעת **Demo Data** לפניות היסטוריות (חודש קודם/שנה שעברה) לצורך הדגמת הדוח — ניתן להפעיל/לכבות לפי `appsettings` או `IHostEnvironment`.
 
 ---
 
-## Endpoints עיקריים
-
-### Inquiries
-- `GET /api/inquiries` — כל הפניות
-- `GET /api/inquiries/{id}` — פנייה בודדת
-- `POST /api/inquiries` — יצירה (Body: `CreateInquiryDto`)
-- `PUT /api/inquiries/{id}` — עדכון
-- `DELETE /api/inquiries/{id}` — מחיקה
-
-### Departments
-- `GET /api/departments` — רשימת מחלקות (נזרעות: "כללי", "תפעול", "מערכות מידע")
-
-### Reports
-- `GET /api/reports/monthly?year=YYYY&month=MM` — דוח חודשי לכל מחלקה
-  - החזרה: `MonthlyReportItemDto[]` עם:
-    - `DepartmentId`, `DepartmentName`
-    - `CurrentMonthCount`, `PrevMonthCount`, `SameMonthLastYearCount`
+## 🌐 CORS
+כברירת־מחדל מופעלת מדיניות שמאפשרת בקשות מ־
+`http://localhost:4200` ו־`http://localhost:5173`, עם `AllowAnyHeader` ו־`AllowAnyMethod`.  
+ניתן להוסיף/להסיר מקורות בקוד ההגדרות (`AddCors`).
 
 ---
 
-## Stored Procedure — דוח פניות חודשי
-קוד ה‑SP נמצא בקובץ:
-```
-src/Infrastructure/Scripts/GetMonthlyInquiryReport.sql
-```
-ויוּצר אוטומטית בעליית היישום (דרך `DatabaseBootstrapper`).
-
-**לוגיקה**:
-- קלט: `@Year INT`, `@Month INT`
-- מחשב חלונות תאריכים:
-  - חודש נוכחי, החודש הקודם, אותו חודש בשנה שעברה
-- מחשב סכום פניות לכל מחלקה בשלושת החלונות
-- מחזיר רשומה לכל מחלקה, גם אם אין לה פניות (באמצעות `LEFT JOIN`)
-
-**ולידציה**:
-- בדיקת טווחים סבירים ל‑Year/Month, ו‑`THROW` במקרה שגיאה.
-
----
-
-## שיפורי ביצועים מוצעים
-1. **אינדקסים**:  
-   - על `Inquiries.CreatedAtUtc` (רצוי `INCLUDE (Id)` או אינדקס מכסה לפי הצורך).
-   - על טבלת הקישור `InquiryDepartments(DepartmentId, InquiryId)`.
-2. **SARGability**: טווחי תאריכים בטופס `>=` ו‑`<` לשימוש באינדקס זמן.
-3. **סינון ב‑JOIN**: סינון טווח בזמן על `Inquiries` לפני האגרגציה מפחית סריקה.
-4. **סטטיסטיקות מעודכנות** ו‑**`NOCOUNT ON`** בתוך ה‑SP.
-5. **Caching אפליקטיבי** לדוחות חודשיים (תלוי דרישות רענון).
-6. **Partitioning** (אם הטבלה תגדל מאוד) לפי תאריך.
-
----
-
-## בדיקות יחידה
-- פרויקט: `tests/Inquiries.Tests`
-- כלים: **xUnit**, **Moq**, **FluentAssertions**
-- דוגמאות נבדקות:
-  - `InquiryService.CreateAsync` — ולידציה של מחלקות קיימות והחזרת מזהה חדש
-  - `InquiryService.GetAllAsync` — מיפוי והחזרת רשימה
-  - `ReportsController.GetMonthly` — החזרת DTO תקין לפי פרמטרים
+## 🧪 בדיקות (Unit Tests)
+- בדיקות לוגיקה ב־Services: יצירה/ולידציה, חישובי דוח (mock repositories), וכדומה.
 - הרצה:
   ```bash
   dotnet test
@@ -221,73 +109,92 @@ src/Infrastructure/Scripts/GetMonthlyInquiryReport.sql
 
 ---
 
-## אבטחה
-- **CORS**: פתוח ל‑`http://localhost:4200` (ול‑`5173` לפיתוח Vite). בפרודקשן לסגור לדומיינים מורשים בלבד.
-- **קלטים**: ולידציה ב‑DTOs (Email, חובה, וכו').
-- **סודות**: לא לשמור מפתחות/סיסמאות בקוד; להשתמש ב‑User Secrets/Env Vars.
-- **Swagger**: להשאיר רק בסביבות פיתוח או לאבטח מאחורי Auth.
+## 📡 נקודות קצה עיקריות (API)
+- **Inquiries**
+  - `GET /api/inquiries`
+  - `GET /api/inquiries/{id}`
+  - `POST /api/inquiries`
+  - `PUT  /api/inquiries/{id}`
+  - `DELETE /api/inquiries/{id}`
 
-> **הערה**: אין דרישת Auth למטלת הבית; בפרודקשן מומלץ JWT/OIDC, Rate Limiting, ותיעוד ביקורות.
+- **Departments**
+  - `GET /api/departments`
 
----
+- **Reports**
+  - `GET /api/reports/monthly?year=YYYY&month=MM`
 
-## טיפול בשגיאות ולוגינג
-- **ExceptionHandlingMiddleware**: יירוט חריגות והחזרת תגובת Problem Details עקבית ללקוח.
-- **Logging**: ברירת המחדל של ASP.NET Core + סינון רמות לוג ב‑`appsettings.*.json`.
-- **EF Core**: שגיאות DB נלכדות וממופות לשגיאת API ברורה.
-
----
-
-## CORS
-מוגדר בזמן Startup:  
-`WithOrigins("http://localhost:4200", "http://localhost:5173").AllowAnyHeader().AllowAnyMethod()`
-
----
-
-## מבנה הפרויקט
-```
-src/
- ├─ Controllers/
- ├─ Application/
- │   ├─ DTOs/
- │   └─ Services/
- ├─ Domain/
- ├─ Infrastructure/
- │   ├─ Ef/
- │   ├─ Repositories/
- │   ├─ Scripts/
- │   │   └─ GetMonthlyInquiryReport.sql
- │   └─ Setup/
- │       ├─ DatabaseBootstrapper.cs
- │       ├─ StoredProceduresInstaller.cs
- │       └─ DemoDataSeeder.cs      # אופציונלי (נשלט ב-Config)
- └─ Program.cs
-tests/
- └─ Inquiries.Tests/
+**דוגמה (curl) — דוח חודשי:**
+```bash
+curl "https://localhost:5005/api/reports/monthly?year=2025&month=8"
 ```
 
 ---
 
-## תקלות נפוצות (FAQ)
+## ⚙️ התקנה והרצה
 
-**404 מה‑Angular ל‑API**  
-- ודאו ש‑`npm start` משתמש ב‑`proxy.conf.json` כפי שמוגדר למעלה.
-- ודאו שה‑API רץ ב‑`http://localhost:5005` (או עדכנו את ה‑proxy).
+### דרישות מקדימות
+- **.NET SDK 8**
+- **SQL Server LocalDB** (מגיע עם Visual Studio / ניתן להתקנה בנפרד)
+- (אופציונלי) **dotnet-ef** לכלי מיגרציות:
+  ```bash
+  dotnet tool update -g dotnet-ef
+  ```
 
-**אזהרת SSR (`withFetch`)**  
-- הוסיפו `withFetch()` ל‑`provideHttpClient` (ראו קטע קוד ב‑Frontend).
+### שלבים
+```bash
+# 1) שחזור תלויות ובנייה
+dotnet restore
+dotnet build
 
-**LocalDB לא רץ / אין Pipe**  
+# 2) הרצה (ה־DB והמיגרציות יטופלו אוטומטית)
+dotnet run --project ./src/Inquiries.Api.csproj
+
+# 3) גלישה ל־Swagger
+# (הפורט מוגדר ב-launchSettings.json, לדוגמה 5005)
+https://localhost:5005/swagger
+```
+
+### בדיקת חיבור ל־LocalDB (אופציונלי)
 ```powershell
-sqllocaldb start MSSQLLocalDB
-sqllocaldb info MSSQLLocalDB   
-```
-
-**בדיקת נתונים ב‑DB דרך sqlcmd**  
-```powershell
-sqlcmd -S "(localdb)\MSSQLLocalDB" -d InquiriesDb -Q "SELECT TOP 10 * FROM dbo.Inquiries"
+sqllocaldb info MSSQLLocalDB      # בדיקת אינסטנס
+sqllocaldb start MSSQLLocalDB     # הפעלה אם צריך
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d InquiriesDb -Q "SELECT TOP 5 * FROM dbo.Inquiries;"
 ```
 
 ---
 
-בהצלחה!
+## 📝 הערות יישום
+- קובץ ה־SP (`GetMonthlyInquiryReport.sql`) נכלל בפרויקט כ־`Content` עם `CopyToOutputDirectory=PreserveNewest`, ומותקן אוטומטית ב־startup.
+- עבור **Seed היסטורי** לצורך בדיקת הדוח: הקוד מוסיף מספר פניות עם תאריכים בחודש קודם/בשנה קודמת — כך שהבודק רואה השוואות כבר בהרצה ראשונה.
+- ניתן לכבות זריעת דמו לפי `IHostEnvironment` (Production ללא דמו).
+
+---
+
+## 📦 בנייה/פריסה
+- **Build**: `dotnet build -c Release`
+- **Publish Self-Contained** (דוגמה, win-x64):
+  ```bash
+  dotnet publish ./src/Inquiries.Api.csproj -c Release -r win-x64 --self-contained true -o ./publish
+  ```
+
+---
+
+## 🙋‍♀️ שאלות נפוצות (FAQ)
+**אין לי נתונים היסטוריים — הדוח ריק.**  
+הפעלת זריעת הדמו מבטיחה נתוני עבר לצורך בדיקה. לחלופין, ניתן לשלוח פניות ידניות ולהתאים את התאריך ידנית בבסיס הנתונים לצורך בדיקה.
+
+**שגיאת 404 מה-Frontend**  
+ודאו שה־API רץ, שה־CORS/Proxy מוגדרים נכון, ושנתיב ה־endpoint תואם (למשל `/api/departments` לעומת `/api/inquiries/departments`).
+
+---
+
+## 📚 תלויות עיקריות
+- `Microsoft.EntityFrameworkCore` / `SqlServer` / `Design`
+- `Microsoft.Data.SqlClient`
+- `Dapper`
+- `Swashbuckle.AspNetCore` (Swagger)
+
+---
+
+© Inquiries API — קוד לדוגמה למטלת בית (.NET).
+
