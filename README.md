@@ -5,7 +5,7 @@
 
 ---
 
-## 🎯 תכולת הפרויקט
+## תכולת הפרויקט
 - **CRUD לפניות** (`Inquiries`) עם השדות:
   - `Name`, `Phone`, `Email`, `DepartmentIds[]`, `Description`
 - **מחלקות (Departments)**: טעינת 3 מחלקות ברירת־מחדל אם הטבלה ריקה.
@@ -16,7 +16,7 @@
 
 ---
 
-## 🧱 ארכיטקטורה ורכיבים
+## ארכיטקטורה ורכיבים
 - **ASP.NET Core 8** — פרויקט Web API (`net8.0`).
 - **Entity Framework Core 9** — ORM לניהול סכימה ו־Migrations, `DbContext` ו־Repositories.
 - **SQL Server LocalDB** — בסיס נתונים מקומי קליל הבנוי אוטומטית בהרצה.
@@ -48,22 +48,22 @@ src/
 
 ---
 
-## ⚖️ החלטות טכניות — יתרונות/חסרונות
+##  החלטות טכניות — יתרונות/חסרונות
 **EF Core** (ל־CRUD ולמיגרציות):
-- ✔️ פרודוקטיביות, מעקב שינויים, Migrations, LINQ, ולידציה קלה.
-- ❌ overhead קל בביצועים מול קריאות ידניות.
+-  פרודוקטיביות, מעקב שינויים, Migrations, LINQ, ולידציה קלה.
+-  overhead קל בביצועים מול קריאות ידניות.
 
 **Dapper/SP לדוחות:**
-- ✔️ מהיר ויעיל לסיכומים/אגרגציות; ניצול אינדקסים; לוגיקת חישוב בצד ה־DB.
-- ❌ דורש ניהול T‑SQL בנפרד ובקרת גרסאות ל־SP.
+-  מהיר ויעיל לסיכומים/אגרגציות; ניצול אינדקסים; לוגיקת חישוב בצד ה־DB.
+-  דורש ניהול T‑SQL בנפרד ובקרת גרסאות ל־SP.
 
 **LocalDB**:
-- ✔️ אין דרישה להתקנה כבדה; “עולה” אוטומטית אצל המריץ.
-- ❌ מיועד לפיתוח; בפרודקשן יש לעבור ל־SQL Server מלא/ענני.
+-  אין דרישה להתקנה כבדה; “עולה” אוטומטית אצל המריץ.
+-  מיועד לפיתוח; בפרודקשן יש לעבור ל־SQL Server מלא/ענני.
 
 ---
 
-## 🔐 אבטחה (היי־לבל)
+## אבטחה (היי־לבל)
 - **HTTPS**: מוגדר `UseHttpsRedirection()`.
 - **ולידציה**: DTOs משתמשים ב־Data Annotations; Controllers מחזירים 400 בעת קלט שגוי.
 - **SQL Injection**: כל הקריאות ל־DB פרמטריות (EF Core/Dapper); ה־SP לא מרכיב SQL דינמי מטקסט.
@@ -72,13 +72,13 @@ src/
 
 ---
 
-## 🧰 טיפול בשגיאות
+# טיפול בשגיאות
 - **ExceptionHandlingMiddleware** מרכז חריגות ומחזיר `application/problem+json` עם `traceId` וסטטוס מתאים (400/404/500).
 - לוגים נכתבים דרך `ILogger` ו־`Logging` של ASP.NET Core.
 
 ---
 
-## 🔗 מנגנוני קישור (DB)
+## מנגנוני קישור (DB)
 - **Connection String** (ברירת מחדל):
   ```json
   "ConnectionStrings": {
@@ -93,14 +93,14 @@ src/
 
 ---
 
-## 🌐 CORS
+## CORS
 כברירת־מחדל מופעלת מדיניות שמאפשרת בקשות מ־
 `http://localhost:4200` ו־`http://localhost:5173`, עם `AllowAnyHeader` ו־`AllowAnyMethod`.  
 ניתן להוסיף/להסיר מקורות בקוד ההגדרות (`AddCors`).
 
 ---
 
-## 🧪 בדיקות (Unit Tests)
+## בדיקות (Unit Tests)
 - בדיקות לוגיקה ב־Services: יצירה/ולידציה, חישובי דוח (mock repositories), וכדומה.
 - הרצה:
   ```bash
@@ -109,7 +109,7 @@ src/
 
 ---
 
-## 📡 נקודות קצה עיקריות (API)
+## נקודות קצה עיקריות (API)
 - **Inquiries**
   - `GET /api/inquiries`
   - `GET /api/inquiries/{id}`
@@ -130,7 +130,7 @@ curl "https://localhost:5005/api/reports/monthly?year=2025&month=8"
 
 ---
 
-## ⚙️ התקנה והרצה
+## התקנה והרצה
 
 ### דרישות מקדימות
 - **.NET SDK 8**
@@ -163,14 +163,14 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -d InquiriesDb -Q "SELECT TOP 5 * FROM dbo.In
 
 ---
 
-## 📝 הערות יישום
+## הערות יישום
 - קובץ ה־SP (`GetMonthlyInquiryReport.sql`) נכלל בפרויקט כ־`Content` עם `CopyToOutputDirectory=PreserveNewest`, ומותקן אוטומטית ב־startup.
 - עבור **Seed היסטורי** לצורך בדיקת הדוח: הקוד מוסיף מספר פניות עם תאריכים בחודש קודם/בשנה קודמת — כך שהבודק רואה השוואות כבר בהרצה ראשונה.
 - ניתן לכבות זריעת דמו לפי `IHostEnvironment` (Production ללא דמו).
 
 ---
 
-## 📦 בנייה/פריסה
+## בנייה/פריסה
 - **Build**: `dotnet build -c Release`
 - **Publish Self-Contained** (דוגמה, win-x64):
   ```bash
@@ -179,7 +179,7 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -d InquiriesDb -Q "SELECT TOP 5 * FROM dbo.In
 
 ---
 
-## 🙋‍♀️ שאלות נפוצות (FAQ)
+## שאלות נפוצות (FAQ)
 **אין לי נתונים היסטוריים — הדוח ריק.**  
 הפעלת זריעת הדמו מבטיחה נתוני עבר לצורך בדיקה. לחלופין, ניתן לשלוח פניות ידניות ולהתאים את התאריך ידנית בבסיס הנתונים לצורך בדיקה.
 
@@ -188,7 +188,7 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -d InquiriesDb -Q "SELECT TOP 5 * FROM dbo.In
 
 ---
 
-## 📚 תלויות עיקריות
+## תלויות עיקריות
 - `Microsoft.EntityFrameworkCore` / `SqlServer` / `Design`
 - `Microsoft.Data.SqlClient`
 - `Dapper`
